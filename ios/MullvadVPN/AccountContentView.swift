@@ -47,8 +47,8 @@ class AccountContentView: UIView {
         return view
     }()
 
-    let accountTokenRowView: AccountTokenRow = {
-        let view = AccountTokenRow()
+    let accountTokenRowView: AccountNumberRow = {
+        let view = AccountNumberRow()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -103,9 +103,10 @@ class AccountContentView: UIView {
 
 class AccountDeviceRow: UIView {
 
-    var deviceName: String = "" {
+    var deviceName: String? {
         didSet {
-            deviceLabel.text = deviceName.capitalized
+            deviceLabel.text = deviceName?.capitalized
+            accessibilityValue = deviceName
         }
     }
 
@@ -157,19 +158,25 @@ class AccountDeviceRow: UIView {
     }
 }
 
-class AccountTokenRow: UIView {
+class AccountNumberRow: UIView {
 
     var accountNumber: String? {
         didSet {
-            concealedAccountNumber = StringFormatter.concealedAccountNumber(from: accountNumber ?? "")
-            accountNumberLabel.text = concealedAccountNumber
-            accessibilityValue = accountNumber
+            let formatted = StringFormatter.formattedAccountNumber(from: accountNumber ?? "")
+            accountNumber = formatted
+            obscuredAccountNumber = String(formatted.map { $0 == " " ? $0 : "∙" })
+            accountNumberLabel.text = obscuredAccountNumber
         }
     }
     var copyAccountNumber: (() -> Void)?
-    var concealedAccountNumber = ""
-    var isAccountNumberConcealed = true
+    var obscuredAccountNumber: String?
+    var isAccountNumberObscured = true
     var isBlockingCopy = false
+    let defaultAccessibilityValue = NSLocalizedString(
+        "ACCOUNT_OBSCURED",
+        tableName: "Account",
+        value: "Obscured",
+        comment: "")
 
     private let titleLabel: UILabel = {
         let textLabel = UILabel()
@@ -190,7 +197,6 @@ class AccountTokenRow: UIView {
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = UIFont.systemFont(ofSize: 17)
         label.textColor = .white
-        label.textAlignment = .left
         label.text = ""
         return label
     }()
@@ -198,7 +204,7 @@ class AccountTokenRow: UIView {
     private var showHideButton: UIButton = {
         let button = UIButton(type: .system)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.setImage(UIImage(named: "IconShow"), for: .normal)
+        button.setImage(UIImage(named: "IconReveal"), for: .normal)
         button.tintColor = .white
         button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         return button
@@ -213,9 +219,22 @@ class AccountTokenRow: UIView {
         return button
     }()
 
-    private let copyIcon: UIImage = {
-        UIImage(named: "IconTick") ?? UIImage()
+    private let copyIcon: UIImage? = {
+        UIImage(named: "IconTick")
     }()
+
+    private let revealAccountNumberString = NSLocalizedString("ACCOUNT_ACCESSIBILITY_REVEAL_ACCOUNT_NUMBER",
+                                                              tableName: "Account",
+                                                              value: "Reveal account number",
+                                                              comment: "")
+    private let hideAccountNumberString = NSLocalizedString("ACCOUNT_ACCESSIBILITY_HIDE_ACCOUNT_NUMBER",
+                                                              tableName: "Account",
+                                                              value: "Hide account number",
+                                                              comment: "")
+    private let copyToPasteboardString = NSLocalizedString("ACCOUNT_ACCESSIBILITY_COPY_TO_PASTEBOARD",
+                                                              tableName: "Account",
+                                                              value: "Copy to pasteboard",
+                                                              comment: "")
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -248,30 +267,40 @@ class AccountTokenRow: UIView {
 
         isAccessibilityElement = true
         accessibilityLabel = titleLabel.text
+        accessibilityValue = defaultAccessibilityValue
 
-        showHideButton.addTarget(self, action: #selector(didTapShowHideButton), for: .touchUpInside)
-        copyButton.addTarget(self, action: #selector(didTapCopyButton), for: .touchUpInside)
+        showHideButton.addTarget(self, action: #selector(didTapShowHideAccount), for: .touchUpInside)
+        copyButton.addTarget(self, action: #selector(didTapCopyAccountNumber), for: .touchUpInside)
+
+        updateView()
     }
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    @objc private func handleTap() {
-        self.copyAccountNumber?()
+    private func updateView() {
+        let accountNumberString = isAccountNumberObscured ? revealAccountNumberString : hideAccountNumberString
+        accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: accountNumberString,
+                                        target: self,
+                                        selector:  #selector(didTapShowHideAccount)),
+            UIAccessibilityCustomAction(name: copyToPasteboardString,
+                                        target: self,
+                                        selector:  #selector(didTapCopyAccountNumber))]
+
+        showHideButton.setImage(UIImage(named: isAccountNumberObscured ? "IconUnobscure" : "IconObscure"), for: .normal)
+        accountNumberLabel.text = isAccountNumberObscured ? obscuredAccountNumber : accountNumber
+        accessibilityValue = isAccountNumberObscured ? defaultAccessibilityValue : accountNumber
     }
 
-    @objc private func performAccessibilityAction() {
-        self.copyAccountNumber?()
+    @objc func didTapShowHideAccount() {
+        isAccountNumberObscured.toggle()
+        updateView()
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
     }
 
-    @objc func didTapShowHideButton() {
-        showHideButton.setImage(UIImage(named: isAccountNumberConcealed ? "IconHide" : "IconShow"), for: .normal)
-        accountNumberLabel.text = isAccountNumberConcealed ? accountNumber : concealedAccountNumber
-        isAccountNumberConcealed.toggle()
-    }
-
-    @objc func didTapCopyButton() {
+    @objc func didTapCopyAccountNumber() {
         guard !isBlockingCopy else { return }
         isBlockingCopy = true
         copyAccountNumber?()
