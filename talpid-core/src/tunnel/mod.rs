@@ -200,7 +200,7 @@ impl TunnelMonitor {
             + Clone
             + 'static,
     {
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "windows"))]
         runtime.block_on(Self::assign_mtu(&route_manager, params));
         let config = wireguard::config::Config::from_parameters(params)?;
         let monitor = wireguard::WireguardMonitor::start(
@@ -229,7 +229,6 @@ impl TunnelMonitor {
         })
     }
 
-    #[cfg(target_os = "linux")]
     fn set_mtu(params: &mut wireguard_types::TunnelParameters, mtu: u16) {
         const WIREGUARD_HEADER_SIZE: u16 = 80;
         // The largest tunnel MTU that we allow. Standard MTU - Wireguard header
@@ -249,7 +248,7 @@ impl TunnelMonitor {
         params.options.mtu = Some(upstream_mtu);
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     async fn assign_mtu(
         route_manager: &RouteManagerHandle,
         params: &mut wireguard_types::TunnelParameters,
