@@ -165,7 +165,7 @@ open class MainActivity : FragmentActivity() {
                             is DeviceState.Unknown -> openLaunchView()
                             is DeviceState.LoggedOut -> openLoginView()
                             is DeviceState.Revoked -> openRevokedView()
-                            is DeviceState.LoggedIn -> openConnectView()
+                            is DeviceState.LoggedIn -> handleLogin()
                         }
                         currentState = newState
                     }
@@ -195,10 +195,13 @@ open class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun openConnectView() {
-        supportFragmentManager.beginTransaction().apply {
-            replace(R.id.main_fragment, ConnectFragment())
-            commit()
+    private fun handleLogin() {
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.main_fragment)
+        if (currentFragment?.isWelcomeOrOutOfTimeFragment() == false) {
+            supportFragmentManager.beginTransaction().apply {
+                replace(R.id.main_fragment, ConnectFragment())
+                commit()
+            }
         }
     }
 
@@ -230,6 +233,10 @@ open class MainActivity : FragmentActivity() {
                 popBackStack(firstEntry.id, FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
         }
+    }
+
+    private fun Fragment.isWelcomeOrOutOfTimeFragment(): Boolean {
+        return this is WelcomeFragment || this is OutOfTimeFragment
     }
 
     companion object {
