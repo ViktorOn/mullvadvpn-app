@@ -9,8 +9,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import net.mullvad.mullvadvpn.R
 import net.mullvad.mullvadvpn.model.TunnelState
 import net.mullvad.mullvadvpn.ui.serviceconnection.DeviceRepository
@@ -27,6 +31,18 @@ class WelcomeFragment : ServiceDependentFragment(OnNoService.GoToLaunchScreen) {
 
     private lateinit var accountLabel: TextView
     private lateinit var sitePaymentButton: SitePaymentButton
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch {
+            deviceRepository.deviceState
+                .flowWithLifecycle(lifecycle, Lifecycle.State.RESUMED)
+                .collect { state ->
+                    updateAccountNumber(state.token())
+                }
+        }
+    }
 
     override fun onSafelyCreateView(
         inflater: LayoutInflater,
@@ -62,12 +78,6 @@ class WelcomeFragment : ServiceDependentFragment(OnNoService.GoToLaunchScreen) {
     }
 
     override fun onSafelyStart() {
-        jobTracker.newUiJob("updateAccountNumber") {
-            deviceRepository.deviceState.collect { state ->
-                updateAccountNumber(state.token())
-            }
-        }
-
         jobTracker.newUiJob("checkAccountExpiry") {
             accountCache.accountExpiryState.collect {
                 checkExpiry(it.date())
