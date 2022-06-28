@@ -3,6 +3,7 @@ set -eu
 shopt -s nullglob
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+readonly SCRIPT_DIR
 
 # In the CI environment we would like to import trusted public keys from a file,
 # but not in our build environment
@@ -34,8 +35,9 @@ done
 
 if [[ "$import_gpg_keys" == "true" ]]; then
     GNUPGHOME=$(mktemp -d)
-    for key in $SCRIPT_DIR/keys/*; do
-        gpg --import $key
+    export GNUPGHOME
+    for key in "$SCRIPT_DIR"/keys/*; do
+        gpg --import "$key"
     done
 fi
 
@@ -47,23 +49,24 @@ fi
 # that follows the `paths` key.
 # It uses `tr` in order to turn the multi-lined file into a single-line that sed can parse
 # correctly. This is done by replacing all new-lines with a `;`
-SEPARATOR=';'
-locked_down_files=$(cat $SCRIPT_DIR/../.github/workflows/verify-locked-down-signatures.yml \
-    | tr '\n' $SEPARATOR \
+readonly SEPARATOR=';'
+locked_down_paths=$(\
+    < "$SCRIPT_DIR/../.github/workflows/verify-locked-down-signatures.yml" tr '\n' $SEPARATOR \
     | sed "s/.*paths:$SEPARATOR\(\(\s*-\s[a-zA-Z\/\.-]*$SEPARATOR\)*\).*/\1/" \
     | tr $SEPARATOR '\n' \
     | awk '{print $2}')
+readonly locked_down_paths
 
 unsigned_commits_exist=0
-for locked_file in $locked_down_files; do
+for locked_path in $locked_down_paths;
+do
+    locked_path_commit_hashes=$(git rev-list --oneline "$whitelisted_commit"..HEAD \
+        "$SCRIPT_DIR/../$locked_path" | awk '{print $1}')
 
-    locked_file_commit_hashes=$(git rev-list --oneline $whitelisted_commit..HEAD \
-        $SCRIPT_DIR/../$locked_file | awk '{print $1}')
-
-    for commit in $locked_file_commit_hashes;
+    for commit in $locked_path_commit_hashes;
     do
-        if ! $(git verify-commit $commit 2> /dev/null); then
-            echo Commit $commit which changed $locked_file is not signed.
+        if ! git verify-commit "$commit" 2> /dev/null; then
+            echo "Commit $commit which changed $locked_path is not signed."
             unsigned_commits_exist=1
         fi
     done
