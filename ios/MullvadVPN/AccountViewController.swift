@@ -97,6 +97,7 @@ class AccountViewController: UIViewController, AppStorePaymentObserver, TunnelOb
         TunnelManager.shared.addObserver(self)
 
         updateAccountExpiry(expiryDate: TunnelManager.shared.accountExpiry)
+        updateDeviceName(TunnelManager.shared.device?.name)
 
         // Make sure to disable IAPs when payments are restricted
         if AppStorePaymentManager.canMakePayments {
@@ -104,14 +105,12 @@ class AccountViewController: UIViewController, AppStorePaymentObserver, TunnelOb
         } else {
             setPaymentsRestricted()
         }
-
-        updateDeviceName(TunnelManager.shared.device?.name ?? "")
     }
 
     // MARK: - Private methods
 
     private func updateDeviceName(_ deviceName: String?) {
-        contentView.accountDeviceRow.deviceName = deviceName ?? ""
+        contentView.accountDeviceRow.deviceName = deviceName
     }
 
     private func updateAccountExpiry(expiryDate: Date?) {
@@ -326,8 +325,12 @@ class AccountViewController: UIViewController, AppStorePaymentObserver, TunnelOb
     }
 
     func tunnelManager(_ manager: TunnelManager, didUpdateTunnelSettings tunnelSettings: TunnelSettingsV2?) {
-        updateDeviceName(tunnelSettings?.device.name)
-        updateAccountExpiry(expiryDate: tunnelSettings?.account.expiry)
+        guard let tunnelSettings = tunnelSettings else {
+            return
+        }
+
+        updateDeviceName(tunnelSettings.device.name)
+        updateAccountExpiry(expiryDate: tunnelSettings.account.expiry)
     }
 
     // MARK: - AppStorePaymentObserver
