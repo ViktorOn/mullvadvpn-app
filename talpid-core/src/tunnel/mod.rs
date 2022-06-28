@@ -229,6 +229,7 @@ impl TunnelMonitor {
         })
     }
 
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     fn set_mtu(params: &mut wireguard_types::TunnelParameters, mtu: u16) {
         const WIREGUARD_HEADER_SIZE: u16 = 80;
         // The largest tunnel MTU that we allow. Standard MTU - Wireguard header
