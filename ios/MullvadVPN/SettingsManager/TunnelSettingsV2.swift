@@ -37,6 +37,17 @@ struct StoredAccountData: Codable, Equatable {
     var expiry: Date
 }
 
+enum DeviceState: Codable {
+    case loggedIn(StoredAccountData, StoredDeviceData)
+    case loggedOut
+    case revoked
+
+    private enum LoggedInCodableKeys: String, CodingKey {
+        case _0 = "account"
+        case _1 = "device"
+    }
+}
+
 struct StoredDeviceData: Codable, Equatable {
     /// Device creation date.
     var creationDate: Date
