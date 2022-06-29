@@ -36,6 +36,10 @@ enum TunnelManagerConfiguration {
     static let privateKeyRotationFailureRetryInterval: TimeInterval = 60 * 15
 }
 
+protocol TunnelManagerDelegate: AnyObject {
+    func tunnelManagerDidDetectDeviceRevoked(_ tunnelManager: TunnelManager)
+}
+
 /// A class that provides a convenient interface for VPN tunnels configuration, manipulation and
 /// monitoring.
 final class TunnelManager: TunnelManagerStateDelegate {
@@ -53,7 +57,22 @@ final class TunnelManager: TunnelManagerStateDelegate {
         )
     }()
 
+    var delegate: TunnelManagerDelegate? {
+        get {
+            return stateQueue.sync {
+                return _delegate
+            }
+        }
+        set {
+            stateQueue.sync {
+                _delegate = newValue
+            }
+        }
+    }
+
     // MARK: - Internal variables
+
+    private weak var _delegate: TunnelManagerDelegate?
 
     private let accountsProxy: REST.AccountsProxy
     private let devicesProxy: REST.DevicesProxy
