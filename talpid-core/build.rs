@@ -69,6 +69,9 @@ fn main() {
     let link_type = match target_os.as_str() {
         "android" => "",
         "linux" | "macos" => "=static",
+        // If we cross-compile for windows in order to run clippy we don't want to panic.
+        // In those cases we should set an env variable called clippy.
+        "windows" if env::var("CLIPPY").is_ok() => "",
         _ => panic!("Unsupported platform: {}", target_os),
     };
 
