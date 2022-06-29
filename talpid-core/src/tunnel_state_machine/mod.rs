@@ -305,7 +305,7 @@ impl TunnelStateMachine {
                 let _ = args.offline_state_tx.unbounded_send(offline);
             }
         });
-        let mut offline_monitor = offline::spawn_monitor(
+        let offline_monitor = offline::spawn_monitor(
             offline_tx,
             #[cfg(target_os = "linux")]
             route_manager

@@ -34,8 +34,8 @@ pub use self::imp::Error;
 pub struct MonitorHandle(Option<imp::MonitorHandle>);
 
 impl MonitorHandle {
-    pub async fn host_is_offline(&mut self) -> bool {
-        match self.0.as_mut() {
+    pub async fn host_is_offline(&self) -> bool {
+        match self.0.as_ref() {
             Some(monitor) => monitor.host_is_offline().await,
             None => false,
         }
